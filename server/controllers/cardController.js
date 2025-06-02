@@ -32,6 +32,8 @@ exports.createCard = async (req, res) => {
       .doc(boardId)
       .collection("cards")
       .add(newCard);
+    const io = req.app.get("io");
+    io.to(boardId).emit("cardCreated", { id: docRef.id, ...newCard });
     res.status(201).json({ id: docRef.id, ...newCard });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -48,6 +50,8 @@ exports.getCard = async (req, res) => {
       .doc(id)
       .get();
     if (!doc.exists) return res.status(404).json({ error: "Card not found" });
+    const io = req.app.get("io");
+    io.to(boardId).emit("cardUpdated", { id: doc.id, ...doc.data() });
     res.status(200).json({ id: doc.id, ...doc.data() });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -86,6 +90,8 @@ exports.updateCard = async (req, res) => {
       .collection("cards")
       .doc(id)
       .get();
+    const io = req.app.get("io");
+    io.to(boardId).emit("cardUpdated", { id: doc.id, ...doc.data() });
     res.status(200).json({ id: doc.id, ...doc.data() });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -101,6 +107,8 @@ exports.deleteCard = async (req, res) => {
       .collection("cards")
       .doc(id)
       .delete();
+    const io = req.app.get("io");
+    io.to(boardId).emit("cardDeleted", { id });
     res.status(204).send();
   } catch (error) {
     res.status(500).json({ error: error.message });
