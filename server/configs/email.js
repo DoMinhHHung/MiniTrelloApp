@@ -28,7 +28,7 @@ const sendBoardInvitationEmail = async (email, boardName, inviterName) => {
     from: process.env.EMAIL_USER,
     to: email,
     subject: "Lời mời tham gia bảng",
-    text: `${inviterName} đã mời bạn tham gia vào bảng "${boardName}". Vui lòng đăng nhập để xem chi tiết.`,
+    text: `${inviterName} đã mời bạn tham gia vào bảng "${boardName}". Vui lòng đăng nhập vào hệ thống ${process.env.FRONTEND_URL} để xem chi tiết.`,
   };
 
   await transporter.sendMail(mailOptions);

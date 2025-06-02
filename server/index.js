@@ -10,12 +10,11 @@ const server = http.createServer(app);
 const { Server } = require("socket.io");
 const io = new Server(server, {
   cors: {
-    origin: "*", // hoặc chỉ định domain FE
+    origin: "*",
     methods: ["GET", "POST"],
   },
 });
 
-// Cho phép các controller truy cập io
 app.set("io", io);
 
 app.use(cors());
@@ -34,11 +33,9 @@ server.listen(PORT, () => {
   console.log(`Server đang chạy trên port ${PORT}`);
 });
 
-// Lắng nghe kết nối socket
 io.on("connection", (socket) => {
   console.log("A user connected:", socket.id);
 
-  // Tham gia vào room board
   socket.on("joinBoard", (boardId) => {
     socket.join(boardId);
   });
