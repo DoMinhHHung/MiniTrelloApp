@@ -1,4 +1,11 @@
 import React, { useState, useRef, useEffect } from "react";
+import socket from "../api/socket";
+import {
+  fetchBoards,
+  createBoard,
+  deleteBoard,
+  updateBoard,
+} from "../api/boardApi";
 
 function getInitials(nameOrEmail: string) {
   if (!nameOrEmail) return "";
@@ -9,14 +16,20 @@ function getInitials(nameOrEmail: string) {
 }
 
 const BoardManagement: React.FC = () => {
-  // Lấy tên/email từ localStorage hoặc context
   const userEmail = localStorage.getItem("userEmail") || "User";
   const initials = getInitials(userEmail);
 
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const [boards, setBoards] = useState<any[]>([]);
+  const [showCreate, setShowCreate] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [newDesc, setNewDesc] = useState("");
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editDesc, setEditDesc] = useState("");
 
-  // Đóng menu khi click ra ngoài
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
@@ -27,10 +40,76 @@ const BoardManagement: React.FC = () => {
     return () => document.removeEventListener("mousedown", handleClick);
   }, [open]);
 
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    fetchBoards(token)
+      .then((res) => setBoards(res.data))
+      .catch(() => setBoards([]));
+  }, []);
+
+  useEffect(() => {
+    socket.on("boardCreated", (data) => {
+      setBoards((prev) => [...prev, data]);
+    });
+
+    socket.on("boardUpdated", (data) => {
+      setBoards((prev) =>
+        prev.map((b) => (b.id === data.id ? { ...b, ...data } : b))
+      );
+    });
+
+    socket.on("boardDeleted", ({ id }) => {
+      setBoards((prev) => prev.filter((b) => b.id !== id));
+    });
+
+    socket.on("memberInvited", (data) => {});
+
+    socket.on("memberJoined", (data) => {});
+
+    return () => {
+      socket.off("boardCreated");
+      socket.off("boardUpdated");
+      socket.off("boardDeleted");
+      socket.off("memberInvited");
+      socket.off("memberJoined");
+    };
+  }, []);
+
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("userEmail");
     window.location.href = "/";
+  };
+
+  const token = localStorage.getItem("token");
+
+  const handleCreateBoard = async () => {
+    if (!token || !newName) return;
+    await createBoard(token, newName, newDesc);
+    setShowCreate(false);
+    setNewName("");
+    setNewDesc("");
+  };
+
+  const handleDeleteBoard = async (id: string) => {
+    if (!token) return;
+    await deleteBoard(token, id);
+    setDeletingId(null);
+  };
+
+  const openEdit = (board: any) => {
+    setEditingId(board.id);
+    setEditName(board.name);
+    setEditDesc(board.description || "");
+  };
+
+  const handleUpdateBoard = async () => {
+    if (!token || !editingId || !editName) return;
+    await updateBoard(token, editingId, editName, editDesc);
+    setEditingId(null);
+    setEditName("");
+    setEditDesc("");
   };
 
   return (
@@ -160,7 +239,6 @@ const BoardManagement: React.FC = () => {
           </div>
         </div>
 
-        {/* Boards content */}
         <div style={{ flex: 1, padding: "48px 32px 0 32px" }}>
           <div
             style={{
@@ -175,46 +253,341 @@ const BoardManagement: React.FC = () => {
             YOUR WORKSPACES
           </div>
           <div style={{ display: "flex", gap: 32 }}>
-            <div
-              style={{
-                width: 220,
-                height: 140,
-                background: "#fff",
-                borderRadius: 8,
-                boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontWeight: 600,
-                fontSize: 18,
-                cursor: "pointer",
-                transition: "box-shadow 0.2s",
-              }}
-            >
-              My Trello board
-            </div>
-            <div
-              style={{
-                width: 220,
-                height: 140,
-                background: "transparent",
-                border: "2px solid #b0b8c1",
-                borderRadius: 8,
-                color: "#b0b8c1",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontWeight: 500,
-                fontSize: 18,
-                cursor: "pointer",
-                transition: "border 0.2s",
-              }}
-            >
-              + Create a new board
-            </div>
+            {boards.map((board) => (
+              <div
+                key={board.id}
+                style={{
+                  width: 240,
+                  minHeight: 180,
+                  background: "#fff",
+                  borderRadius: 12,
+                  boxShadow: "0 4px 16px rgba(0,0,0,0.10)",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "flex-start",
+                  justifyContent: "space-between",
+                  fontWeight: 600,
+                  fontSize: 18,
+                  cursor: "pointer",
+                  transition: "box-shadow 0.2s",
+                  position: "relative",
+                  padding: "20px 20px 48px 20px",
+                  marginBottom: 8,
+                }}
+              >
+                <div
+                  style={{
+                    color: "#e53935",
+                    fontWeight: 700,
+                    fontSize: 20,
+                    marginBottom: 8,
+                  }}
+                >
+                  {board.name}
+                </div>
+                <div
+                  style={{
+                    color: "#888",
+                    fontWeight: 400,
+                    fontSize: 15,
+                    marginBottom: 16,
+                    minHeight: 32,
+                  }}
+                >
+                  {board.description}
+                </div>
+                <div
+                  style={{
+                    position: "absolute",
+                    bottom: 12,
+                    left: 0,
+                    right: 0,
+                    display: "flex",
+                    justifyContent: "center",
+                    gap: 8,
+                  }}
+                >
+                  <button
+                    style={{
+                      background: "#1976d2",
+                      color: "#fff",
+                      border: "none",
+                      borderRadius: 4,
+                      padding: "4px 16px",
+                      fontSize: 14,
+                      cursor: "pointer",
+                    }}
+                    onClick={() => openEdit(board)}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    style={{
+                      background: "#e53935",
+                      color: "#fff",
+                      border: "none",
+                      borderRadius: 4,
+                      padding: "4px 16px",
+                      fontSize: 14,
+                      cursor: "pointer",
+                    }}
+                    onClick={() => setDeletingId(board.id)}
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            ))}
+            {showCreate ? (
+              <div
+                style={{
+                  position: "fixed",
+                  top: 0,
+                  left: 0,
+                  width: "100vw",
+                  height: "100vh",
+                  background: "rgba(0,0,0,0.3)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  zIndex: 1000,
+                }}
+              >
+                <div
+                  style={{
+                    background: "#fff",
+                    borderRadius: 8,
+                    padding: 32,
+                    minWidth: 320,
+                    textAlign: "center",
+                  }}
+                >
+                  <div
+                    style={{ marginBottom: 16, fontWeight: 600, fontSize: 18 }}
+                  >
+                    Create New Board
+                  </div>
+                  <input
+                    placeholder="Board name"
+                    value={newName}
+                    onChange={(e) => setNewName(e.target.value)}
+                    style={{
+                      width: "100%",
+                      padding: 8,
+                      marginBottom: 12,
+                      borderRadius: 4,
+                      border: "1px solid #ddd",
+                    }}
+                  />
+                  <input
+                    placeholder="Description"
+                    value={newDesc}
+                    onChange={(e) => setNewDesc(e.target.value)}
+                    style={{
+                      width: "100%",
+                      padding: 8,
+                      marginBottom: 20,
+                      borderRadius: 4,
+                      border: "1px solid #ddd",
+                    }}
+                  />
+                  <div>
+                    <button
+                      onClick={handleCreateBoard}
+                      style={{
+                        background: "#e53935",
+                        color: "#fff",
+                        border: "none",
+                        borderRadius: 4,
+                        padding: "6px 16px",
+                        marginRight: 8,
+                        fontWeight: 600,
+                      }}
+                    >
+                      Create
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowCreate(false);
+                        setNewName("");
+                        setNewDesc("");
+                      }}
+                      style={{
+                        background: "#eee",
+                        color: "#333",
+                        border: "none",
+                        borderRadius: 4,
+                        padding: "6px 16px",
+                      }}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div
+                style={{
+                  width: 220,
+                  height: 140,
+                  background: "transparent",
+                  border: "2px solid #b0b8c1",
+                  borderRadius: 8,
+                  color: "#b0b8c1",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontWeight: 500,
+                  fontSize: 18,
+                  cursor: "pointer",
+                  transition: "border 0.2s",
+                }}
+                onClick={() => setShowCreate(true)}
+              >
+                + Create a new board
+              </div>
+            )}
           </div>
         </div>
       </div>
+
+      {deletingId && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            width: "100vw",
+            height: "100vh",
+            background: "rgba(0,0,0,0.3)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
+          }}
+        >
+          <div
+            style={{
+              background: "#fff",
+              borderRadius: 8,
+              padding: 32,
+              minWidth: 300,
+              textAlign: "center",
+            }}
+          >
+            <div style={{ marginBottom: 16 }}>
+              Are you sure you want to delete this board?
+            </div>
+            <button
+              onClick={() => handleDeleteBoard(deletingId)}
+              style={{
+                background: "#e53935",
+                color: "#fff",
+                border: "none",
+                borderRadius: 4,
+                padding: "6px 16px",
+                marginRight: 8,
+              }}
+            >
+              Yes, Delete
+            </button>
+            <button
+              onClick={() => setDeletingId(null)}
+              style={{
+                background: "#eee",
+                color: "#333",
+                border: "none",
+                borderRadius: 4,
+                padding: "6px 16px",
+              }}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {editingId && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            width: "100vw",
+            height: "100vh",
+            background: "rgba(0,0,0,0.3)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
+          }}
+        >
+          <div
+            style={{
+              background: "#fff",
+              borderRadius: 8,
+              padding: 32,
+              minWidth: 320,
+              textAlign: "center",
+            }}
+          >
+            <div style={{ marginBottom: 16, fontWeight: 600, fontSize: 18 }}>
+              Edit Board
+            </div>
+            <input
+              placeholder="Board name"
+              value={editName}
+              onChange={(e) => setEditName(e.target.value)}
+              style={{
+                width: "100%",
+                padding: 8,
+                marginBottom: 12,
+                borderRadius: 4,
+                border: "1px solid #ddd",
+              }}
+            />
+            <input
+              placeholder="Description"
+              value={editDesc}
+              onChange={(e) => setEditDesc(e.target.value)}
+              style={{
+                width: "100%",
+                padding: 8,
+                marginBottom: 20,
+                borderRadius: 4,
+                border: "1px solid #ddd",
+              }}
+            />
+            <div>
+              <button
+                onClick={handleUpdateBoard}
+                style={{
+                  background: "#1976d2",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: 4,
+                  padding: "6px 16px",
+                  marginRight: 8,
+                }}
+              >
+                Save
+              </button>
+              <button
+                onClick={() => setEditingId(null)}
+                style={{
+                  background: "#eee",
+                  color: "#333",
+                  border: "none",
+                  borderRadius: 4,
+                  padding: "6px 16px",
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
