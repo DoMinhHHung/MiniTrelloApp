@@ -11,7 +11,7 @@ const { Server } = require("socket.io");
 const io = new Server(server, {
   cors: {
     origin: "*",
-    methods: ["GET", "POST"],
+    methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true,
   },
 });
@@ -21,7 +21,7 @@ app.set("io", io);
 app.use(
   cors({
     origin: process.env.FRONTEND_URL,
-    methods: ["GET", "POST"],
+    methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true,
   })
 );

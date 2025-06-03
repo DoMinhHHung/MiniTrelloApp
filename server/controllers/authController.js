@@ -151,3 +151,30 @@ exports.githubCallback = async (req, res) => {
     res.redirect(`${process.env.FRONTEND_URL}/auth/error`);
   }
 };
+
+exports.sendCode = async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ error: "Email is required" });
+
+    const userRef = db.collection("users");
+    const snapshot = await userRef.where("email", "==", email).get();
+    const verificationCode = generateVerificationCode();
+
+    if (snapshot.empty) {
+      // Nếu user chưa tồn tại, tạo mới
+      await userRef.add({
+        email,
+        verificationCode,
+        createdAt: new Date(),
+      });
+    } else {
+      // Nếu user đã tồn tại, cập nhật mã mới
+      await userRef.doc(snapshot.docs[0].id).update({ verificationCode });
+    }
+    await sendVerificationEmail(email, verificationCode);
+    res.json({ message: "Mã xác thực đã được gửi đến email của bạn" });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};

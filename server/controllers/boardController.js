@@ -42,8 +42,6 @@ exports.getBoard = async (req, res) => {
     const doc = await db.collection("boards").doc(id).get();
     if (!doc.exists) return res.status(404).json({ error: "Board not found" });
     const boardData = doc.data();
-
-    // Lấy danh sách invite (pending)
     const invitesSnap = await db
       .collection("boards")
       .doc(id)

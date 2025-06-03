@@ -198,7 +198,6 @@ exports.assignMemberToTask = async (req, res) => {
     const { memberId } = req.body;
     const userId = req.userData.id;
 
-    // Lấy board và kiểm tra quyền
     const boardDoc = await db.collection("boards").doc(boardId).get();
     if (!boardDoc.exists)
       return res.status(404).json({ error: "Board not found" });
@@ -208,7 +207,6 @@ exports.assignMemberToTask = async (req, res) => {
         .status(403)
         .json({ error: "Bạn không có quyền thao tác trên board này" });
     }
-    // Kiểm tra memberId có phải là member của board không
     if (!boardData.members.includes(memberId)) {
       return res
         .status(400)
@@ -243,7 +241,6 @@ exports.getTaskAssignedMembers = async (req, res) => {
   try {
     const { boardId, id, taskId } = req.params;
     const userId = req.userData.id;
-    // Lấy board và kiểm tra quyền
     const boardDoc = await db.collection("boards").doc(boardId).get();
     if (!boardDoc.exists)
       return res.status(404).json({ error: "Board not found" });
@@ -277,7 +274,6 @@ exports.removeMemberFromTask = async (req, res) => {
   try {
     const { boardId, id, taskId, memberId } = req.params;
     const userId = req.userData.id;
-    // Lấy board và kiểm tra quyền
     const boardDoc = await db.collection("boards").doc(boardId).get();
     if (!boardDoc.exists)
       return res.status(404).json({ error: "Board not found" });
