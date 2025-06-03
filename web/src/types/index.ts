@@ -22,6 +22,7 @@ export interface Card {
   createdAt: Date;
   members: string[];
   tasks_count: number;
+  order?: number;
 }
 
 export interface Task {
@@ -31,6 +32,8 @@ export interface Task {
   status: TaskStatus;
   createdAt: Date;
   ownerId: string;
+  cardId?: string;
+  order?: number;
 }
 
 export type TaskStatus =

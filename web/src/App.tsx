@@ -8,6 +8,7 @@ import { ThemeProvider, createTheme, CssBaseline } from "@mui/material";
 import Signin from "./pages/auth/Signin";
 import Verify from "./pages/auth/Verify";
 import BoardManagement from "./pages/boards/BoardManagement";
+import BoardDetail from "./pages/boards/BoardDetail";
 import { AuthProvider } from "./contexts/AuthContext";
 import GithubCallback from "./pages/auth/GithubCallback";
 
@@ -42,6 +43,14 @@ function App() {
               element={
                 <PrivateRoute>
                   <BoardManagement />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/boards/:boardId"
+              element={
+                <PrivateRoute>
+                  <BoardDetail />
                 </PrivateRoute>
               }
             />

@@ -1,5 +1,6 @@
 import api from "../services/api";
 import type { Board, BoardInvite } from "../types";
+import { socketService } from "../services";
 
 export const boardService = {
   createBoard: async (name: string, description: string): Promise<Board> => {
@@ -60,3 +61,5 @@ export const boardService = {
     return response.data;
   },
 };
+
+export { socketService };

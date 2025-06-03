@@ -62,23 +62,105 @@ exports.getTask = async (req, res) => {
 exports.updateTask = async (req, res) => {
   try {
     const { boardId, id, taskId } = req.params;
-    await db
-      .collection("boards")
-      .doc(boardId)
-      .collection("cards")
-      .doc(id)
-      .collection("tasks")
-      .doc(taskId)
-      .update(req.body);
-    const doc = await db
-      .collection("boards")
-      .doc(boardId)
-      .collection("cards")
-      .doc(id)
-      .collection("tasks")
-      .doc(taskId)
-      .get();
-    res.status(200).json({ id: doc.id, ...doc.data() });
+    const { cardId, order, ...updateData } = req.body;
+
+    if (cardId && cardId !== id) {
+      const taskDoc = await db
+        .collection("boards")
+        .doc(boardId)
+        .collection("cards")
+        .doc(id)
+        .collection("tasks")
+        .doc(taskId)
+        .get();
+
+      if (!taskDoc.exists) {
+        return res.status(404).json({ error: "Task not found" });
+      }
+
+      const taskData = taskDoc.data();
+
+      await db
+        .collection("boards")
+        .doc(boardId)
+        .collection("cards")
+        .doc(id)
+        .collection("tasks")
+        .doc(taskId)
+        .delete();
+
+      const newTaskRef = await db
+        .collection("boards")
+        .doc(boardId)
+        .collection("cards")
+        .doc(cardId)
+        .collection("tasks")
+        .add({
+          ...taskData,
+          ...updateData,
+          cardId,
+          order,
+        });
+
+      const oldCardRef = db
+        .collection("boards")
+        .doc(boardId)
+        .collection("cards")
+        .doc(id);
+      const newCardRef = db
+        .collection("boards")
+        .doc(boardId)
+        .collection("cards")
+        .doc(cardId);
+
+      await db.runTransaction(async (transaction) => {
+        const oldCardDoc = await transaction.get(oldCardRef);
+        const newCardDoc = await transaction.get(newCardRef);
+
+        transaction.update(oldCardRef, {
+          tasks_count: (oldCardDoc.data().tasks_count || 0) - 1,
+        });
+        transaction.update(newCardRef, {
+          tasks_count: (newCardDoc.data().tasks_count || 0) + 1,
+        });
+      });
+
+      const io = req.app.get("io");
+      io.to(boardId).emit("task:updated", {
+        id: newTaskRef.id,
+        ...taskData,
+        ...updateData,
+        cardId,
+        order,
+      });
+
+      res
+        .status(200)
+        .json({ id: newTaskRef.id, ...taskData, ...updateData, cardId, order });
+    } else {
+      await db
+        .collection("boards")
+        .doc(boardId)
+        .collection("cards")
+        .doc(id)
+        .collection("tasks")
+        .doc(taskId)
+        .update({ ...updateData, order });
+
+      const doc = await db
+        .collection("boards")
+        .doc(boardId)
+        .collection("cards")
+        .doc(id)
+        .collection("tasks")
+        .doc(taskId)
+        .get();
+
+      const io = req.app.get("io");
+      io.to(boardId).emit("task:updated", { id: doc.id, ...doc.data() });
+
+      res.status(200).json({ id: doc.id, ...doc.data() });
+    }
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

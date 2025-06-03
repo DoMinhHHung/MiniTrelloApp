@@ -2,11 +2,9 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
-import Container from "@mui/material/Container";
 import Grid from "@mui/material/Grid";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
-import CardActions from "@mui/material/CardActions";
 import Typography from "@mui/material/Typography";
 import Dialog from "@mui/material/Dialog";
 import DialogTitle from "@mui/material/DialogTitle";
@@ -17,6 +15,8 @@ import IconButton from "@mui/material/IconButton";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
+import Sidebar from "../../components/Sidebar";
+import logo from "../../assets/logo.png";
 import { boardService, socketService } from "../../services";
 import type { Board } from "../../types";
 
@@ -31,37 +31,39 @@ const BoardManagement = () => {
     name: "",
     description: "",
   });
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [confirmUpdate, setConfirmUpdate] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState<{
+    open: boolean;
+    boardId: string | null;
+  }>({ open: false, boardId: null });
 
   useEffect(() => {
     fetchBoards();
-    setupSocketListeners();
-
+    socketService.connect();
+    socketService.onBoardCreated((board: Board) => {
+      setBoards((prev) => [...prev, board]);
+    });
+    socketService.onBoardUpdated((board: Board) => {
+      setBoards((prev) =>
+        prev.map((b) => (b.id === board.id ? { ...b, ...board } : b))
+      );
+    });
+    socketService.onBoardDeleted(({ id }: { id: string }) => {
+      setBoards((prev) => prev.filter((b) => b.id !== id));
+    });
     return () => {
       socketService.disconnect();
     };
   }, []);
 
-  const setupSocketListeners = () => {
-    socketService.connect();
-    socketService.onBoardCreated((board) => {
-      setBoards((prev) => [...prev, board]);
-    });
-    socketService.onBoardUpdated((board) => {
-      setBoards((prev) =>
-        prev.map((b) => (b.id === board.id ? { ...b, ...board } : b))
-      );
-    });
-    socketService.onBoardDeleted(({ id }) => {
-      setBoards((prev) => prev.filter((b) => b.id !== id));
-    });
-  };
-
   const fetchBoards = async () => {
+    setLoading(true);
     try {
       const data = await boardService.getBoards();
       setBoards(data);
     } catch (err: any) {
-      setError(err.response?.data?.error || "Không thể tải danh sách bảng");
+      setError("Failed to load boards");
     } finally {
       setLoading(false);
     }
@@ -102,92 +104,168 @@ const BoardManagement = () => {
           formData.name,
           formData.description
         );
+        await fetchBoards();
       } else {
         await boardService.createBoard(formData.name, formData.description);
       }
       handleCloseDialog();
     } catch (err: any) {
-      setError(err.response?.data?.error || "Đã xảy ra lỗi");
+      setError(
+        editingBoard ? "Failed to update board" : "Failed to create board"
+      );
     }
   };
 
-  const handleDelete = async (boardId: string) => {
-    if (window.confirm("Bạn có chắc chắn muốn xóa bảng này?")) {
+  const handleDelete = (boardId: string) => {
+    setConfirmDelete({ open: true, boardId });
+  };
+
+  const confirmDeleteBoard = async () => {
+    if (confirmDelete.boardId) {
       try {
-        await boardService.deleteBoard(boardId);
+        await boardService.deleteBoard(confirmDelete.boardId);
+        setConfirmDelete({ open: false, boardId: null });
       } catch (err: any) {
-        setError(err.response?.data?.error || "Không thể xóa bảng");
+        setError("Failed to delete board");
       }
     }
   };
 
-  if (loading) {
-    return <Typography>Đang tải...</Typography>;
-  }
-
   return (
-    <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-      <Box sx={{ display: "flex", justifyContent: "space-between", mb: 4 }}>
-        <Typography variant="h4">Quản lý bảng</Typography>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => handleOpenDialog()}
-        >
-          Tạo bảng mới
-        </Button>
+    <Box
+      sx={{
+        display: "flex",
+        width: "100vw",
+        height: "100vh",
+        bgcolor: "#2c333a",
+      }}
+    >
+      <Box sx={{ flexShrink: 0 }}>
+        <Sidebar onClose={() => setSidebarOpen(false)} selected="boards" />
       </Box>
-
-      {error && (
-        <Typography color="error" sx={{ mb: 2 }}>
-          {error}
-        </Typography>
-      )}
-
-      <Grid container spacing={3}>
-        {boards.map((board) => (
-          <Grid item xs={12} sm={6} md={4} key={board.id}>
-            <Card>
-              <CardContent>
-                <Typography variant="h6" gutterBottom>
-                  {board.name}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  {board.description}
-                </Typography>
-              </CardContent>
-              <CardActions>
-                <Button
-                  size="small"
-                  onClick={() => navigate(`/boards/${board.id}`)}
+      <Box
+        sx={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}
+      >
+        <Box
+          sx={{
+            height: 56,
+            bgcolor: "#232a32",
+            display: "flex",
+            alignItems: "center",
+            px: 3,
+          }}
+        >
+          <Box
+            component="img"
+            src={logo}
+            alt="Logo"
+            sx={{ height: 32, mr: 2 }}
+          />
+          <Typography
+            variant="h6"
+            color="#fff"
+            sx={{ flex: 1, fontWeight: 600 }}
+          >
+            YOUR WORKSPACES
+          </Typography>
+        </Box>
+        {/* Boards grid */}
+        <Box sx={{ flex: 1, p: 4, overflow: "auto", width: "100%" }}>
+          <Grid container spacing={3} sx={{ width: "100%", margin: 0 }}>
+            {boards.map((board) => (
+              <Grid item xs={12} sm={6} md={4} key={board.id}>
+                <Card
+                  sx={{
+                    bgcolor: "#fff",
+                    minHeight: 140,
+                    minWidth: 260,
+                    maxWidth: 320,
+                    width: "100%",
+                    cursor: "pointer",
+                    position: "relative",
+                    mx: "auto",
+                  }}
                 >
-                  Xem chi tiết
-                </Button>
-                <IconButton
-                  size="small"
-                  onClick={() => handleOpenDialog(board)}
-                >
-                  <EditIcon />
-                </IconButton>
-                <IconButton size="small" onClick={() => handleDelete(board.id)}>
-                  <DeleteIcon />
-                </IconButton>
-              </CardActions>
-            </Card>
+                  <CardContent
+                    onClick={() => navigate(`/boards/${board.id}`)}
+                    style={{ cursor: "pointer" }}
+                  >
+                    <Typography variant="body1" color="text.primary">
+                      {board.name}
+                    </Typography>
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      sx={{ mt: 1 }}
+                    >
+                      {board.description}
+                    </Typography>
+                  </CardContent>
+                  <Box
+                    sx={{
+                      position: "absolute",
+                      top: 8,
+                      right: 8,
+                      display: "flex",
+                      gap: 1,
+                    }}
+                  >
+                    <IconButton
+                      size="small"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleOpenDialog(board);
+                      }}
+                    >
+                      <EditIcon fontSize="small" />
+                    </IconButton>
+                    <IconButton
+                      size="small"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDelete(board.id);
+                      }}
+                    >
+                      <DeleteIcon fontSize="small" />
+                    </IconButton>
+                  </Box>
+                </Card>
+              </Grid>
+            ))}
+            <Grid item xs={12} sm={6} md={4}>
+              <Card
+                sx={{
+                  bgcolor: "transparent",
+                  border: "1px solid #888",
+                  minHeight: 140,
+                  minWidth: 260,
+                  maxWidth: 320,
+                  width: "100%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  cursor: "pointer",
+                  mx: "auto",
+                }}
+                onClick={() => handleOpenDialog()}
+              >
+                <Typography color="#bbb">+ Create a new board</Typography>
+              </Card>
+            </Grid>
           </Grid>
-        ))}
-      </Grid>
-
+        </Box>
+      </Box>
+      {/* Dialog for create/edit board */}
       <Dialog open={openDialog} onClose={handleCloseDialog}>
         <DialogTitle>
-          {editingBoard ? "Chỉnh sửa bảng" : "Tạo bảng mới"}
+          {editingBoard ? "Edit board" : "Create new board"}
         </DialogTitle>
         <form onSubmit={handleSubmit}>
           <DialogContent>
             <TextField
               autoFocus
               margin="dense"
-              label="Tên bảng"
+              label="Board name"
               fullWidth
               required
               value={formData.name}
@@ -197,7 +275,7 @@ const BoardManagement = () => {
             />
             <TextField
               margin="dense"
-              label="Mô tả"
+              label="Description"
               fullWidth
               multiline
               rows={4}
@@ -211,14 +289,37 @@ const BoardManagement = () => {
             />
           </DialogContent>
           <DialogActions>
-            <Button onClick={handleCloseDialog}>Hủy</Button>
+            <Button onClick={handleCloseDialog}>Cancel</Button>
             <Button type="submit" variant="contained">
-              {editingBoard ? "Cập nhật" : "Tạo"}
+              {editingBoard ? "Update" : "Create"}
             </Button>
           </DialogActions>
         </form>
       </Dialog>
-    </Container>
+      <Dialog
+        open={confirmDelete.open}
+        onClose={() => setConfirmDelete({ open: false, boardId: null })}
+      >
+        <DialogTitle>Confirm delete</DialogTitle>
+        <DialogContent>
+          <Typography>Are you sure you want to delete this board?</Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => setConfirmDelete({ open: false, boardId: null })}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={confirmDeleteBoard}
+            variant="contained"
+            color="error"
+          >
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </Box>
   );
 };
 
