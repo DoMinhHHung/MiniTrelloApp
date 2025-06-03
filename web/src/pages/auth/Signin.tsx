@@ -8,11 +8,15 @@ import {
   Typography,
   Paper,
   Divider,
+  InputAdornment,
+  IconButton,
 } from "@mui/material";
 import GitHubIcon from "@mui/icons-material/GitHub";
 import { authService } from "../../services/authService";
 import logo from "../../assets/logo.png";
 import bg from "../../assets/Background.png";
+import Visibility from "@mui/icons-material/Visibility";
+import VisibilityOff from "@mui/icons-material/VisibilityOff";
 
 const Signin = () => {
   const navigate = useNavigate();
@@ -21,6 +25,7 @@ const Signin = () => {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [codeSent, setCodeSent] = useState(false);
+  const [showCode, setShowCode] = useState(false);
 
   const handleRequestCode = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,8 +33,7 @@ const Signin = () => {
     setLoading(true);
 
     try {
-      // Call backend to request verification code (if needed)
-      // You may want to implement a separate endpoint for requesting code
+      await authService.sendCode(email);
       setCodeSent(true);
     } catch (err: any) {
       setError("Đã xảy ra lỗi khi gửi mã xác thực");
@@ -174,10 +178,25 @@ const Signin = () => {
                 required
                 fullWidth
                 id="verificationCode"
-                label="Mã xác thực"
+                label="Authentication Code"
                 name="verificationCode"
+                type={showCode ? "text" : "password"}
                 value={verificationCode}
                 onChange={(e) => setVerificationCode(e.target.value)}
+                InputProps={{
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton
+                        aria-label="toggle code visibility"
+                        onClick={() => setShowCode((show) => !show)}
+                        edge="end"
+                        size="small"
+                      >
+                        {showCode ? <VisibilityOff /> : <Visibility />}
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                }}
               />
             )}
             <Button

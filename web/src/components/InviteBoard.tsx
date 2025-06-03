@@ -28,14 +28,12 @@ const InviteBoard: React.FC = () => {
 
       const token = localStorage.getItem("token");
       if (!token) {
-        // Store the current URL to redirect back after login
         localStorage.setItem("inviteRedirect", `/invite?boardId=${boardId}`);
         navigate(`/signin?redirect=/invite?boardId=${boardId}`);
         return;
       }
 
       try {
-        // Get board details first
         const board = await boardService.getBoard(boardId);
         setBoardName(board.name);
 

@@ -31,4 +31,9 @@ export const authService = {
   isAuthenticated: (): boolean => {
     return !!localStorage.getItem("token");
   },
+
+  sendCode: async (email: string) => {
+    const response = await api.post("/auth/send-code", { email });
+    return response.data;
+  },
 };

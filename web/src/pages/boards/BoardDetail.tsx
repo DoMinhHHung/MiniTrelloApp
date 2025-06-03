@@ -537,12 +537,10 @@ const BoardDetail = () => {
     }
   };
 
-  // Hàm xóa member khỏi task (chuẩn bị cho chức năng xóa)
   const handleRemoveMemberFromTask = async (userId: string) => {
     if (!selectedTask) return;
     const cardId = selectedTask.cardId;
     if (!boardId || !cardId) return;
-    // TODO: sẽ gọi taskService.removeMemberAssignment ở bước sau
   };
 
   return (
