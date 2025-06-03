@@ -255,7 +255,6 @@ const BoardManagement = () => {
           </Grid>
         </Box>
       </Box>
-      {/* Dialog for create/edit board */}
       <Dialog open={openDialog} onClose={handleCloseDialog}>
         <DialogTitle>
           {editingBoard ? "Edit board" : "Create new board"}

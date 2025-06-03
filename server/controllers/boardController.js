@@ -82,10 +82,18 @@ exports.inviteMember = async (req, res) => {
       .collection("users")
       .where("email", "==", email_member)
       .get();
-    let member_id = null;
-    if (!userSnap.empty) {
-      member_id = userSnap.docs[0].id;
+    if (userSnap.empty) {
+      return res
+        .status(404)
+        .json({ error: "Email is not registered account." });
     }
+    let member_id = userSnap.docs[0].id;
+
+    const boardDoc = await db.collection("boards").doc(boardId).get();
+    if (!boardDoc.exists) {
+      return res.status(404).json({ error: "Board not found" });
+    }
+    const boardData = boardDoc.data();
 
     const invite = {
       boardId,
@@ -100,12 +108,18 @@ exports.inviteMember = async (req, res) => {
       .collection("invites")
       .add(invite);
 
-    await sendBoardInvitationEmail(email_member, boardId, "Board Owner");
+    await sendBoardInvitationEmail(
+      email_member,
+      boardId,
+      boardData.name,
+      "Board Owner"
+    );
 
     const io = req.app.get("io");
     io.to(boardId).emit("memberInvited", { boardId, email_member, member_id });
     res.status(200).json({ success: true, member_id, invited: true });
   } catch (error) {
+    console.error("Error in inviteMember:", error);
     res.status(500).json({ error: error.message });
   }
 };

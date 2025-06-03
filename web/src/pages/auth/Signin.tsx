@@ -38,17 +38,29 @@ const Signin = () => {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setLoading(true);
 
     try {
-      const response = await authService.signin(email, verificationCode);
-      localStorage.setItem("token", response.accessToken);
-      navigate("/boards");
+      const response = await authService.signIn(email, verificationCode);
+      localStorage.setItem("token", response.token);
+      localStorage.setItem("userEmail", email);
+
+      // Check for invite redirect
+      const inviteRedirect = localStorage.getItem("inviteRedirect");
+      if (inviteRedirect) {
+        localStorage.removeItem("inviteRedirect");
+        navigate(inviteRedirect);
+      } else {
+        // Check for regular redirect
+        const params = new URLSearchParams(location.search);
+        const redirect = params.get("redirect");
+        navigate(redirect || "/boards");
+      }
     } catch (err: any) {
-      setError(err.response?.data?.error || "Đã xảy ra lỗi khi đăng nhập");
+      setError(err?.response?.data?.error || "Failed to sign in");
     } finally {
       setLoading(false);
     }
@@ -141,7 +153,7 @@ const Signin = () => {
           <Divider sx={{ width: "100%", my: 2 }}>or</Divider>
           <Box
             component="form"
-            onSubmit={codeSent ? handleSubmit : handleRequestCode}
+            onSubmit={codeSent ? handleSignIn : handleRequestCode}
             sx={{ mt: 1, width: "100%" }}
           >
             <TextField
