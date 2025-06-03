@@ -80,32 +80,72 @@ npm run dev
 
 ### Authentication
 
+#### Login Page
+
 ![Login Page](screenshots/LoginPage.png)
+
+#### Auth Page
+
 ![Auth Page](screenshots/AuthPage.png)
 
 ### Board Management
 
+#### Board Management Page
+
 ![Board Management Page](screenshots/BoardManagementPage.png)
+
+#### Create new board
+
 ![Create new board](screenshots/CreateNewBoard.png)
+
+#### Created new board
+
 ![Created new board](screenshots/CreatedNewBoard.png)
 
 ### Card & Task
 
+#### Card
+
 ![Card](screenshots/Card.png)
+
+#### Created new card
+
 ![Created new card](screenshots/CreatedNewCard.png)
+
+#### Create new task
+
 ![Create new task](screenshots/CreateNewTask.png)
+
+#### Created new task
+
 ![Created new task](screenshots/CreatedNewTask.png)
+
+#### Drop & Drag Task
+
 ![Drop & Drag Task](screenshots/DropAndDragTask.png)
 
 ### Member Management
 
+#### Invite member
+
 ![Invite member](screenshots/InviteMember.png)
+
+#### Send Invite To Email
+
 ![Send Invite To Email](screenshots/SendInviteToEmail.png)
+
+#### Join To Board
+
 ![Join To Board](screenshots/JoinToBoard.png)
 
 ### Task Assignment
 
+#### Assign Task
+
 ![Assign Task](screenshots/AssignTask.png)
+
+#### Assignd Task
+
 ![Assigned Task](screenshots/AssignedTask.png)
 
 ## API Documentation
