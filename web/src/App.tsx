@@ -11,7 +11,7 @@ import BoardManagement from "./pages/boards/BoardManagement";
 import BoardDetail from "./pages/boards/BoardDetail";
 import { AuthProvider } from "./contexts/AuthContext";
 import GithubCallback from "./pages/auth/GithubCallback";
-import InviteBoard from "./pages/InviteBoard";
+import InviteBoard from "./components/InviteBoard";
 
 const theme = createTheme({
   palette: {

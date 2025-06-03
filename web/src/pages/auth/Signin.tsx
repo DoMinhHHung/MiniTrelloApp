@@ -44,17 +44,15 @@ const Signin = () => {
     setLoading(true);
 
     try {
-      const response = await authService.signIn(email, verificationCode);
-      localStorage.setItem("token", response.token);
+      const response = await authService.signin(email, verificationCode);
+      localStorage.setItem("token", response.accessToken);
       localStorage.setItem("userEmail", email);
 
-      // Check for invite redirect
       const inviteRedirect = localStorage.getItem("inviteRedirect");
       if (inviteRedirect) {
         localStorage.removeItem("inviteRedirect");
         navigate(inviteRedirect);
       } else {
-        // Check for regular redirect
         const params = new URLSearchParams(location.search);
         const redirect = params.get("redirect");
         navigate(redirect || "/boards");

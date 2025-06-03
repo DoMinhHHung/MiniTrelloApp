@@ -191,3 +191,120 @@ exports.deleteTask = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+exports.assignMemberToTask = async (req, res) => {
+  try {
+    const { boardId, id, taskId } = req.params;
+    const { memberId } = req.body;
+    const userId = req.userData.id;
+
+    // Lấy board và kiểm tra quyền
+    const boardDoc = await db.collection("boards").doc(boardId).get();
+    if (!boardDoc.exists)
+      return res.status(404).json({ error: "Board not found" });
+    const boardData = boardDoc.data();
+    if (!boardData.members.includes(userId)) {
+      return res
+        .status(403)
+        .json({ error: "Bạn không có quyền thao tác trên board này" });
+    }
+    // Kiểm tra memberId có phải là member của board không
+    if (!boardData.members.includes(memberId)) {
+      return res
+        .status(400)
+        .json({ error: "Thành viên này không thuộc board" });
+    }
+
+    const taskRef = db
+      .collection("boards")
+      .doc(boardId)
+      .collection("cards")
+      .doc(id)
+      .collection("tasks")
+      .doc(taskId);
+
+    const taskDoc = await taskRef.get();
+    if (!taskDoc.exists)
+      return res.status(404).json({ error: "Task not found" });
+
+    const taskData = taskDoc.data();
+    let members = taskData.members || [];
+    if (!members.includes(memberId)) {
+      members.push(memberId);
+      await taskRef.update({ members });
+    }
+    res.status(201).json({ taskId, memberId });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.getTaskAssignedMembers = async (req, res) => {
+  try {
+    const { boardId, id, taskId } = req.params;
+    const userId = req.userData.id;
+    // Lấy board và kiểm tra quyền
+    const boardDoc = await db.collection("boards").doc(boardId).get();
+    if (!boardDoc.exists)
+      return res.status(404).json({ error: "Board not found" });
+    const boardData = boardDoc.data();
+    if (!boardData.members.includes(userId)) {
+      return res
+        .status(403)
+        .json({ error: "Bạn không có quyền thao tác trên board này" });
+    }
+
+    const taskRef = db
+      .collection("boards")
+      .doc(boardId)
+      .collection("cards")
+      .doc(id)
+      .collection("tasks")
+      .doc(taskId);
+
+    const taskDoc = await taskRef.get();
+    if (!taskDoc.exists)
+      return res.status(404).json({ error: "Task not found" });
+
+    const members = taskDoc.data().members || [];
+    res.status(200).json(members);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.removeMemberFromTask = async (req, res) => {
+  try {
+    const { boardId, id, taskId, memberId } = req.params;
+    const userId = req.userData.id;
+    // Lấy board và kiểm tra quyền
+    const boardDoc = await db.collection("boards").doc(boardId).get();
+    if (!boardDoc.exists)
+      return res.status(404).json({ error: "Board not found" });
+    const boardData = boardDoc.data();
+    if (!boardData.members.includes(userId)) {
+      return res
+        .status(403)
+        .json({ error: "Bạn không có quyền thao tác trên board này" });
+    }
+
+    const taskRef = db
+      .collection("boards")
+      .doc(boardId)
+      .collection("cards")
+      .doc(id)
+      .collection("tasks")
+      .doc(taskId);
+
+    const taskDoc = await taskRef.get();
+    if (!taskDoc.exists)
+      return res.status(404).json({ error: "Task not found" });
+
+    let members = taskDoc.data().members || [];
+    members = members.filter((m) => m !== memberId);
+    await taskRef.update({ members });
+    res.status(204).send();
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};

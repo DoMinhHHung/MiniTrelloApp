@@ -41,7 +41,23 @@ exports.getBoard = async (req, res) => {
     const { id } = req.params;
     const doc = await db.collection("boards").doc(id).get();
     if (!doc.exists) return res.status(404).json({ error: "Board not found" });
-    res.status(200).json({ id: doc.id, ...doc.data() });
+    const boardData = doc.data();
+
+    // Lấy danh sách invite (pending)
+    const invitesSnap = await db
+      .collection("boards")
+      .doc(id)
+      .collection("invites")
+      .get();
+    const pendingInvites = [];
+    invitesSnap.forEach((inviteDoc) => {
+      const invite = inviteDoc.data();
+      if (invite.status === "pending") {
+        pendingInvites.push(invite.email_member);
+      }
+    });
+
+    res.status(200).json({ id: doc.id, ...boardData, pendingInvites });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

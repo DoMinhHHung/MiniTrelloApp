@@ -30,9 +30,27 @@ import logo from "../../assets/logo.png";
 import { socketService } from "../../services/socketService";
 import { boardService } from "../../services/boardService";
 import axios from "axios";
+import TaskDetailDialog from "../../components/TaskDetailDialog";
+import MoreHorizIcon from "@mui/icons-material/MoreHoriz";
 
 const CARD_TYPE = "CARD";
 const TASK_TYPE = "TASK";
+
+function getUserNameFromToken() {
+  const token = localStorage.getItem("token");
+  if (!token) return localStorage.getItem("userEmail") || "User";
+  try {
+    const payload = JSON.parse(atob(token.split(".")[1]));
+    return (
+      payload.name ||
+      payload.email ||
+      localStorage.getItem("userEmail") ||
+      "User"
+    );
+  } catch {
+    return localStorage.getItem("userEmail") || "User";
+  }
+}
 
 const BoardDetail = () => {
   const { boardId } = useParams<{ boardId: string }>();
@@ -58,38 +76,58 @@ const BoardDetail = () => {
   const [members, setMembers] = useState<string[]>([]);
   const [memberEmails, setMemberEmails] = useState<string[]>([]);
   const [sidebarSelected, setSidebarSelected] = useState("boards");
+  const [taskDetailDialogOpen, setTaskDetailDialogOpen] = useState(false);
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [taskMembers, setTaskMembers] = useState<string[]>([]);
   const navigate = useNavigate();
+
+  console.log("BoardDetail render, memberEmails:", memberEmails);
 
   useEffect(() => {
     if (!boardId) return;
     fetchCards();
-    boardService.getBoard(boardId).then((board) => {
-      setBoardName(board.name);
-      setMembers(board.members || []);
-      if (board.members && board.members.length > 0) {
-        axios
-          .get(`/api/boards/users?ids=${board.members.join(",")}`)
-          .then((res) => {
-            const emails = res.data.map((u: any) => u.email);
-            if (emails.length === 0) {
-              const localEmail = localStorage.getItem("userEmail");
-              setMemberEmails(localEmail ? [localEmail] : []);
-            } else {
+    const fetchMembers = () => {
+      boardService.getBoard(boardId).then((board) => {
+        setBoardName(board.name);
+        setMembers(board.members || []);
+        if (board.members && board.members.length > 0) {
+          axios
+            .get(`/boards/users?ids=${board.members.join(",")}`)
+            .then((res) => {
+              const emails = res.data.map((u: any) => u.email);
+              console.log(
+                "FE nhận được emails:",
+                emails,
+                "board.members:",
+                board.members
+              );
               setMemberEmails(emails);
-            }
-          })
-          .catch(() => {
-            const localEmail = localStorage.getItem("userEmail");
-            setMemberEmails(localEmail ? [localEmail] : []);
-          });
-      } else {
-        const localEmail = localStorage.getItem("userEmail");
-        setMemberEmails(localEmail ? [localEmail] : []);
-      }
-    });
+              setTimeout(() => {
+                console.log(
+                  "Sau khi setMemberEmails:",
+                  emails,
+                  "memberEmails state:",
+                  memberEmails
+                );
+              }, 1000);
+            })
+            .catch(() => {
+              setMemberEmails([]);
+            });
+        } else {
+          setMemberEmails([]);
+        }
+      });
+    };
+    fetchMembers();
 
     socketService.connect();
     socketService.joinBoard(boardId);
+
+    const handleMemberJoined = () => {
+      fetchMembers();
+    };
+    socketService.onMemberJoined(handleMemberJoined);
 
     socketService.onCardCreated((card: BoardCard) => {
       setCards((prev) => {
@@ -140,6 +178,24 @@ const BoardDetail = () => {
       socketService.disconnect();
     };
   }, [boardId]);
+
+  useEffect(() => {
+    if (selectedTask && boardId && selectedTask.cardId) {
+      taskService
+        .getAssignedMembers(boardId, selectedTask.cardId, selectedTask.id)
+        .then((res) => {
+          const data = res && (res as any).data ? (res as any).data : res;
+          if (Array.isArray(data) && typeof data[0] === "string") {
+            setTaskMembers(data);
+          } else if (Array.isArray(data) && data[0]?.memberId) {
+            setTaskMembers(data.map((m: any) => m.memberId));
+          } else {
+            setTaskMembers([]);
+          }
+        })
+        .catch(() => setTaskMembers([]));
+    }
+  }, [selectedTask, boardId]);
 
   const fetchCards = async () => {
     if (!boardId) return;
@@ -364,6 +420,17 @@ const BoardDetail = () => {
               >
                 <DeleteIcon fontSize="small" />
               </IconButton>
+              <IconButton
+                edge="end"
+                size="small"
+                onClick={() => {
+                  setSelectedTask(task);
+                  setTaskDetailDialogOpen(true);
+                }}
+                color="inherit"
+              >
+                <MoreHorizIcon fontSize="small" />
+              </IconButton>
             </>
           }
         >
@@ -410,7 +477,6 @@ const BoardDetail = () => {
     );
   };
 
-  // Invite member handlers
   const handleOpenInvite = () => {
     setInviteOpen(true);
     setInviteEmail("");
@@ -446,6 +512,39 @@ const BoardDetail = () => {
     }
   };
 
+  const handleAddMemberToTask = async (userId: string) => {
+    if (!selectedTask) return;
+    const cardId = selectedTask.cardId;
+    if (!boardId || !cardId) return;
+
+    try {
+      await taskService.assignMember(boardId, cardId, selectedTask.id, userId);
+      const res = await taskService.getAssignedMembers(
+        boardId,
+        cardId,
+        selectedTask.id
+      );
+      const data = res && (res as any).data ? (res as any).data : res;
+      if (Array.isArray(data) && typeof data[0] === "string") {
+        setTaskMembers(data);
+      } else if (Array.isArray(data) && data[0]?.memberId) {
+        setTaskMembers(data.map((m: any) => m.memberId));
+      } else {
+        setTaskMembers([]);
+      }
+    } catch (e) {
+      alert("Không thể gán thành viên vào task!");
+    }
+  };
+
+  // Hàm xóa member khỏi task (chuẩn bị cho chức năng xóa)
+  const handleRemoveMemberFromTask = async (userId: string) => {
+    if (!selectedTask) return;
+    const cardId = selectedTask.cardId;
+    if (!boardId || !cardId) return;
+    // TODO: sẽ gọi taskService.removeMemberAssignment ở bước sau
+  };
+
   return (
     <DndProvider backend={HTML5Backend}>
       <Box
@@ -465,6 +564,7 @@ const BoardDetail = () => {
             members={members}
             memberEmails={memberEmails}
             onNavigateBoards={() => navigate("/boards")}
+            userName={getUserNameFromToken()}
           />
         </Box>
         <Box
@@ -734,6 +834,36 @@ const BoardDetail = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      <TaskDetailDialog
+        open={taskDetailDialogOpen}
+        onClose={() => setTaskDetailDialogOpen(false)}
+        task={
+          selectedTask
+            ? {
+                title: selectedTask.title,
+                description: selectedTask.description,
+                members: (taskMembers || []).map((userId) => {
+                  const idx = members.indexOf(userId);
+                  const email = memberEmails[idx] || userId;
+                  return {
+                    name: email,
+                    initials: email.split("@")[0].slice(0, 2).toUpperCase(),
+                    color: "#d32f2f",
+                    id: userId,
+                  };
+                }),
+                listName: cards.find((c) => c.id === selectedTask.cardId)?.name,
+              }
+            : { title: "", description: "", members: [] }
+        }
+        boardMembers={members.map((id, idx) => ({
+          id,
+          email: memberEmails[idx] || id,
+        }))}
+        onAddMember={handleAddMemberToTask}
+        onRemoveMember={handleRemoveMemberFromTask}
+      />
     </DndProvider>
   );
 };

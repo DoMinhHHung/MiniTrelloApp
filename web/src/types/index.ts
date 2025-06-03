@@ -13,6 +13,7 @@ export interface Board {
   owner: string;
   members: string[];
   createdAt: Date;
+  pendingInvites?: string[];
 }
 
 export interface Card {
@@ -34,6 +35,7 @@ export interface Task {
   ownerId: string;
   cardId?: string;
   order?: number;
+  members?: string[];
 }
 
 export type TaskStatus =

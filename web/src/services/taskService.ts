@@ -1,5 +1,6 @@
 import api from "../services/api";
 import type { Task, TaskStatus } from "../types";
+import axios from "axios";
 
 export const taskService = {
   getTasks: async (boardId: string, cardId: string): Promise<Task[]> => {
@@ -60,18 +61,15 @@ export const taskService = {
     await api.delete(`/boards/${boardId}/cards/${cardId}/tasks/${taskId}`);
   },
 
-  assignMember: async (
+  assignMember: (
     boardId: string,
     cardId: string,
     taskId: string,
     memberId: string
-  ): Promise<{ taskId: string; memberId: string }> => {
-    const response = await api.post<{ taskId: string; memberId: string }>(
-      `/boards/${boardId}/cards/${cardId}/tasks/${taskId}/assign`,
-      { memberId }
-    );
-    return response.data;
-  },
+  ) =>
+    api.post(`/boards/${boardId}/cards/${cardId}/tasks/${taskId}/assign`, {
+      memberId,
+    }),
 
   getAssignedMembers: async (
     boardId: string,

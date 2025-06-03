@@ -20,6 +20,22 @@ import logo from "../../assets/logo.png";
 import { boardService, socketService } from "../../services";
 import type { Board } from "../../types";
 
+function getUserNameFromToken() {
+  const token = localStorage.getItem("token");
+  if (!token) return localStorage.getItem("userEmail") || "User";
+  try {
+    const payload = JSON.parse(atob(token.split(".")[1]));
+    return (
+      payload.name ||
+      payload.email ||
+      localStorage.getItem("userEmail") ||
+      "User"
+    );
+  } catch {
+    return localStorage.getItem("userEmail") || "User";
+  }
+}
+
 const BoardManagement = () => {
   const navigate = useNavigate();
   const [boards, setBoards] = useState<Board[]>([]);
@@ -141,7 +157,11 @@ const BoardManagement = () => {
       }}
     >
       <Box sx={{ flexShrink: 0 }}>
-        <Sidebar onClose={() => setSidebarOpen(false)} selected="boards" />
+        <Sidebar
+          onClose={() => setSidebarOpen(false)}
+          selected="boards"
+          userName={getUserNameFromToken()}
+        />
       </Box>
       <Box
         sx={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}
