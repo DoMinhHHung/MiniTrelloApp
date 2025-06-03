@@ -122,7 +122,7 @@ npm run dev
 
 #### Drop & Drag Task
 
-![Drop&Drag Task](screenshots\Drop&DragTask.png)
+![Drop&DragTask](screenshots/Drop&DragTask.png)
 
 ### Member Management
 
