@@ -12,5 +12,6 @@ router.delete("/:id", auth, boardController.deleteBoard);
 router.post("/:boardId/invite", auth, boardController.inviteMember);
 router.post("/:boardId/invite/accept", auth, boardController.acceptInvite);
 router.use("/:boardId/cards", cardRoutes);
+router.get("/users", auth, boardController.getUsersByIds);
 
 module.exports = router;

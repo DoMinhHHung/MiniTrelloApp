@@ -142,3 +142,22 @@ exports.acceptInvite = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+exports.getUsersByIds = async (req, res) => {
+  try {
+    const ids = (req.query.ids || "").split(",").filter(Boolean);
+    if (!ids.length) return res.status(400).json({ error: "No ids provided" });
+    const usersRef = db.collection("users");
+    const users = [];
+    for (const id of ids) {
+      const doc = await usersRef.doc(id).get();
+      if (doc.exists) {
+        const data = doc.data();
+        users.push({ id: doc.id, email: data.email });
+      }
+    }
+    res.status(200).json(users);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};

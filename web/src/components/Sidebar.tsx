@@ -14,6 +14,10 @@ interface SidebarProps {
   onClose?: () => void;
   selected?: string;
   onSelect?: (key: string) => void;
+  boardId?: string;
+  members?: string[];
+  memberEmails?: string[];
+  onNavigateBoards?: () => void;
 }
 
 const navItems = [
@@ -21,7 +25,15 @@ const navItems = [
   { key: "members", label: "All Members", icon: <GroupIcon /> },
 ];
 
-const Sidebar = ({ onClose, selected = "boards", onSelect }: SidebarProps) => {
+const Sidebar = ({
+  onClose,
+  selected = "boards",
+  onSelect,
+  boardId,
+  members,
+  memberEmails,
+  onNavigateBoards,
+}: SidebarProps) => {
   return (
     <Box
       sx={{
@@ -42,7 +54,13 @@ const Sidebar = ({ onClose, selected = "boards", onSelect }: SidebarProps) => {
               disablePadding
               key={item.key}
               {...(selected === item.key ? { selected: true } : {})}
-              onClick={() => onSelect && onSelect(item.key)}
+              onClick={() => {
+                if (item.key === "boards" && onNavigateBoards) {
+                  onNavigateBoards();
+                } else if (onSelect) {
+                  onSelect(item.key);
+                }
+              }}
               sx={{
                 bgcolor: selected === item.key ? "#232f3e" : "inherit",
                 borderRadius: 1,
@@ -58,6 +76,28 @@ const Sidebar = ({ onClose, selected = "boards", onSelect }: SidebarProps) => {
             </ListItem>
           ))}
         </List>
+        {selected === "members" && memberEmails && (
+          <Box sx={{ mt: 2 }}>
+            <Typography
+              variant="subtitle2"
+              sx={{ color: "#bbb", mb: 1, pl: 2 }}
+            >
+              Members
+            </Typography>
+            <List dense>
+              {memberEmails.length === 0 && (
+                <ListItem>
+                  <ListItemText primary="No members" />
+                </ListItem>
+              )}
+              {memberEmails.map((email) => (
+                <ListItem key={email}>
+                  <ListItemText primary={email} />
+                </ListItem>
+              ))}
+            </List>
+          </Box>
+        )}
       </Box>
       <Box>
         <Divider sx={{ bgcolor: "#444", mb: 2 }} />

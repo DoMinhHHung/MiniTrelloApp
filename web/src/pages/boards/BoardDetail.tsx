@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import Button from "@mui/material/Button";
@@ -14,6 +14,8 @@ import DialogActions from "@mui/material/DialogActions";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
 import AddIcon from "@mui/icons-material/Add";
+import PersonAddIcon from "@mui/icons-material/PersonAdd";
+import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import { cardService } from "../../services/cardService";
 import { taskService } from "../../services/taskService";
 import type { Card as BoardCard, Task } from "../../types";
@@ -26,6 +28,8 @@ import Navbar from "../../components/Navbar";
 import Sidebar from "../../components/Sidebar";
 import logo from "../../assets/logo.png";
 import { socketService } from "../../services/socketService";
+import { boardService } from "../../services/boardService";
+import axios from "axios";
 
 const CARD_TYPE = "CARD";
 const TASK_TYPE = "TASK";
@@ -44,10 +48,45 @@ const BoardDetail = () => {
   } | null>(null);
   const [taskForm, setTaskForm] = useState({ title: "", description: "" });
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [boardName, setBoardName] = useState("");
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteLoading, setInviteLoading] = useState(false);
+  const [inviteError, setInviteError] = useState("");
+  const [inviteSuccess, setInviteSuccess] = useState("");
+  const [inviteLinkEnabled, setInviteLinkEnabled] = useState(true);
+  const [members, setMembers] = useState<string[]>([]);
+  const [memberEmails, setMemberEmails] = useState<string[]>([]);
+  const [sidebarSelected, setSidebarSelected] = useState("boards");
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (!boardId) return;
     fetchCards();
+    boardService.getBoard(boardId).then((board) => {
+      setBoardName(board.name);
+      setMembers(board.members || []);
+      if (board.members && board.members.length > 0) {
+        axios
+          .get(`/api/boards/users?ids=${board.members.join(",")}`)
+          .then((res) => {
+            const emails = res.data.map((u: any) => u.email);
+            if (emails.length === 0) {
+              const localEmail = localStorage.getItem("userEmail");
+              setMemberEmails(localEmail ? [localEmail] : []);
+            } else {
+              setMemberEmails(emails);
+            }
+          })
+          .catch(() => {
+            const localEmail = localStorage.getItem("userEmail");
+            setMemberEmails(localEmail ? [localEmail] : []);
+          });
+      } else {
+        const localEmail = localStorage.getItem("userEmail");
+        setMemberEmails(localEmail ? [localEmail] : []);
+      }
+    });
 
     socketService.connect();
     socketService.joinBoard(boardId);
@@ -371,6 +410,42 @@ const BoardDetail = () => {
     );
   };
 
+  // Invite member handlers
+  const handleOpenInvite = () => {
+    setInviteOpen(true);
+    setInviteEmail("");
+    setInviteError("");
+    setInviteSuccess("");
+  };
+  const handleCloseInvite = () => {
+    setInviteOpen(false);
+    setInviteEmail("");
+    setInviteError("");
+    setInviteSuccess("");
+  };
+  const handleInvite = async () => {
+    if (!boardId || !inviteEmail) return;
+    setInviteLoading(true);
+    setInviteError("");
+    setInviteSuccess("");
+    try {
+      await boardService.inviteMember(boardId, inviteEmail);
+      setInviteSuccess("Invitation sent!");
+      setInviteEmail("");
+    } catch (e: any) {
+      setInviteError(e?.response?.data?.error || "Failed to invite member");
+    } finally {
+      setInviteLoading(false);
+    }
+  };
+  const handleCopyLink = async () => {
+    if (boardId) {
+      await navigator.clipboard.writeText(
+        window.location.origin + `/boards/${boardId}/invite`
+      );
+    }
+  };
+
   return (
     <DndProvider backend={HTML5Backend}>
       <Box
@@ -382,7 +457,15 @@ const BoardDetail = () => {
         }}
       >
         <Box sx={{ flexShrink: 0 }}>
-          <Sidebar onClose={() => setSidebarOpen(false)} selected="boards" />
+          <Sidebar
+            onClose={() => setSidebarOpen(false)}
+            selected={sidebarSelected}
+            onSelect={setSidebarSelected}
+            boardId={boardId}
+            members={members}
+            memberEmails={memberEmails}
+            onNavigateBoards={() => navigate("/boards")}
+          />
         </Box>
         <Box
           sx={{
@@ -412,8 +495,16 @@ const BoardDetail = () => {
               color="#fff"
               sx={{ flex: 1, fontWeight: 600 }}
             >
-              BOARD DETAIL
+              {boardName || "BOARD DETAIL"}
             </Typography>
+            <IconButton
+              color="inherit"
+              sx={{ color: "#fff" }}
+              onClick={handleOpenInvite}
+            >
+              Invite member
+              <PersonAddIcon />
+            </IconButton>
           </Box>
           <Box sx={{ flex: 1, p: 4, overflow: "auto" }}>
             <Box sx={{ display: "flex", gap: 2, alignItems: "flex-start" }}>
@@ -586,6 +677,62 @@ const BoardDetail = () => {
             </Button>
           </DialogActions>
         </form>
+      </Dialog>
+
+      <Dialog open={inviteOpen} onClose={handleCloseInvite}>
+        <DialogTitle>Invite to Board</DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Email address or name"
+            fullWidth
+            value={inviteEmail}
+            onChange={(e) => setInviteEmail(e.target.value)}
+            disabled={inviteLoading}
+          />
+          {inviteError && (
+            <Typography color="error" variant="body2">
+              {inviteError}
+            </Typography>
+          )}
+          {inviteSuccess && (
+            <Typography color="success.main" variant="body2">
+              {inviteSuccess}
+            </Typography>
+          )}
+          <Box sx={{ mt: 2, display: "flex", alignItems: "center", gap: 2 }}>
+            <Typography variant="body2" sx={{ flex: 1 }}>
+              Invite someone to this Workspace with a link:
+              <Button
+                variant="text"
+                size="small"
+                sx={{ ml: 1, textTransform: "none" }}
+                onClick={() => setInviteLinkEnabled(!inviteLinkEnabled)}
+              >
+                {inviteLinkEnabled ? "Disable link" : "Enable link"}
+              </Button>
+            </Typography>
+            <Button
+              variant="outlined"
+              startIcon={<ContentCopyIcon />}
+              onClick={handleCopyLink}
+              disabled={!inviteLinkEnabled}
+            >
+              Copy link
+            </Button>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseInvite}>Cancel</Button>
+          <Button
+            onClick={handleInvite}
+            variant="contained"
+            disabled={!inviteEmail || inviteLoading}
+          >
+            Invite
+          </Button>
+        </DialogActions>
       </Dialog>
     </DndProvider>
   );
