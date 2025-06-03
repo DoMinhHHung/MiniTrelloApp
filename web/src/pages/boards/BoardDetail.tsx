@@ -53,7 +53,10 @@ const BoardDetail = () => {
     socketService.joinBoard(boardId);
 
     socketService.onCardCreated((card: BoardCard) => {
-      setCards((prev) => [...prev, card]);
+      setCards((prev) => {
+        if (prev.find((c) => c.id === card.id)) return prev;
+        return [...prev, card];
+      });
     });
 
     socketService.onCardUpdated((card: BoardCard) => {
@@ -66,19 +69,7 @@ const BoardDetail = () => {
       setCards((prev) => prev.filter((c) => c.id !== id));
     });
 
-    socketService.onTaskCreated((task: Task) => {
-      if (task.cardId) {
-        setTasks((prev) => ({
-          ...prev,
-          [task.cardId as string]: [
-            ...(prev[task.cardId as string] || []),
-            task,
-          ],
-        }));
-      }
-    });
-
-    socketService.onTaskUpdated((task: Task) => {
+    const handleTaskUpsert = (task: Task) => {
       if (task.cardId) {
         setTasks((prev) => {
           const newTasks = { ...prev };
@@ -92,7 +83,10 @@ const BoardDetail = () => {
           return newTasks;
         });
       }
-    });
+    };
+
+    socketService.onTaskCreated(handleTaskUpsert);
+    socketService.onTaskUpdated(handleTaskUpsert);
 
     socketService.onTaskDeleted(
       ({ cardId, taskId }: { cardId: string; taskId: string }) => {
@@ -222,36 +216,16 @@ const BoardDetail = () => {
       fromIndex: number,
       toIndex: number
     ) => {
-      setTasks((prev) => {
-        const fromTasks = [...(prev[fromCardId] || [])];
-        const toTasks = [...(prev[toCardId] || [])];
-        const [moved] = fromTasks.splice(fromIndex, 1);
-        if (!moved) return prev;
-        toTasks.splice(toIndex, 0, moved);
-        if (boardId) {
-          taskService.updateTask(boardId, fromCardId, moved.id, {
-            cardId: toCardId,
-            order: toIndex,
-            status: moved.status,
-          });
-        }
-        const updatedFromTasks = fromTasks.map((task, idx) => ({
-          ...task,
-          order: idx,
-        }));
-        const updatedToTasks = toTasks.map((task, idx) => ({
-          ...task,
-          order: idx,
-          cardId: toCardId,
-        }));
-        return {
-          ...prev,
-          [fromCardId]: updatedFromTasks,
-          [toCardId]: updatedToTasks,
-        };
+      if (!boardId) return;
+      const moved = (tasks[fromCardId] || [])[fromIndex];
+      if (!moved) return;
+      taskService.updateTask(boardId, fromCardId, moved.id, {
+        cardId: toCardId,
+        order: toIndex,
+        status: moved.status,
       });
     },
-    [boardId]
+    [boardId, tasks]
   );
 
   const CardDnD = ({

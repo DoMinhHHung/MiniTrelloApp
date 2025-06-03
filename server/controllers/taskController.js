@@ -35,6 +35,12 @@ exports.createTask = async (req, res) => {
       .doc(id)
       .collection("tasks")
       .add(newTask);
+    const io = req.app.get("io");
+    io.to(boardId).emit("task:created", {
+      id: docRef.id,
+      ...newTask,
+      cardId: id,
+    });
     res.status(201).json({ id: docRef.id, ...newTask });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -126,7 +132,8 @@ exports.updateTask = async (req, res) => {
       });
 
       const io = req.app.get("io");
-      io.to(boardId).emit("task:updated", {
+      io.to(boardId).emit("task:deleted", { cardId: id, taskId });
+      io.to(boardId).emit("task:created", {
         id: newTaskRef.id,
         ...taskData,
         ...updateData,
@@ -177,6 +184,8 @@ exports.deleteTask = async (req, res) => {
       .collection("tasks")
       .doc(taskId)
       .delete();
+    const io = req.app.get("io");
+    io.to(boardId).emit("task:deleted", { cardId: id, taskId });
     res.status(204).send();
   } catch (error) {
     res.status(500).json({ error: error.message });

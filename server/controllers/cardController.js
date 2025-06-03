@@ -33,7 +33,7 @@ exports.createCard = async (req, res) => {
       .collection("cards")
       .add(newCard);
     const io = req.app.get("io");
-    io.to(boardId).emit("cardCreated", { id: docRef.id, ...newCard });
+    io.to(boardId).emit("card:created", { id: docRef.id, ...newCard });
     res.status(201).json({ id: docRef.id, ...newCard });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -108,7 +108,7 @@ exports.deleteCard = async (req, res) => {
       .doc(id)
       .delete();
     const io = req.app.get("io");
-    io.to(boardId).emit("cardDeleted", { id });
+    io.to(boardId).emit("card:deleted", { id });
     res.status(204).send();
   } catch (error) {
     res.status(500).json({ error: error.message });
