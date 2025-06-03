@@ -1,143 +1,151 @@
 # Mini Trello App
 
-## Giới thiệu
+A modern task management application built with React, TypeScript, and Node.js.
 
-Mini Trello App là một ứng dụng quản lý công việc theo phong cách Trello Clone, hỗ trợ realtime (socket.io, socket.io-client), kéo thả, gán thành viên vào task, tích hợp GitHub, xác thực bằng email code.
+## Features
 
-## Cấu trúc dự án
+- Authentication with Email OTP and GitHub OAuth
+- Board Management
+- Card & Task Management
+- Member Management
+- Task Assignment
+- Real-time Updates
+- Responsive Design
 
-```
-Project/
-├── server/                 # Backend NodeJS/Express + Firebase
-│   ├── controllers/        # Các controller xử lý logic API
-│   ├── routes/             # Định nghĩa các route API
-│   ├── configs/            # Cấu hình Firebase, email, GitHub, CORS
-│   ├── middlewares/        # Middleware xác thực, CORS
-│   ├── index.js            # File khởi động server
-│
-├── web/                    # Frontend React + TypeScript
-│   ├── src/
-│   │   ├── components/     # Các component giao diện
-│   │   ├── pages/          # Các trang chính
-│   │   ├── services/       # Gọi API backend
-│   │   ├── types/          # Định nghĩa type
-│   │   └── ...
-│   ├── public/
-│
-├── Readme.md
-├── screenshots             # Ảnh chụp màn hình các Pages
-```
+## Tech Stack
 
-## Hướng dẫn cài đặt & chạy dự án
+### Frontend
 
-### 1. Clone project
+- React
+- TypeScript
+- Material-UI
+- React DnD
+- Socket.io Client
+- Axios
 
-```bash
-git clone
-cd Project
-```
+### Backend
 
-### 2. Cài đặt backend (server)
+- Node.js
+- Express
+- Firebase
+- Socket.io
+- TypeScript
+
+## Getting Started
+
+### Installation
+
+1. Clone the repository:
 
 ```bash
-cd server
+git clone https:...............
+cd mini-trello
+```
+
+2. Install dependencies:
+
+```bash
+cd web
+npm install
+
+cd ../server
 npm install
 ```
 
-#### **Cấu hình biến môi trường**
+3. Configure environment variables:
 
-# Firebase
+```bash
+# Frontend (.env)
+VITE_API_URL=.....
+VITE_FIREBASE_CONFIG=...
 
-FIREBASE_PROJECT_ID=...
-FIREBASE_CLIENT_EMAIL=...
-FIREBASE_PRIVATE_KEY=...
-
-# JWT
-
-JWT_SECRET=...
-
-# Server
-
+# Backend (.env)
 PORT=...
-
-# GitHub
-
-GITHUB_CLIENT_ID=...
-GITHUB_CLIENT_SECRET=...
-GITHUB_REDIRECT_URI=...
-
-# Email
-
-EMAIL_USER=...
-EMAIL_PASS=...
-
-FRONTEND_URL=...
-
-````
-
-#### **Chạy backend**
-
-```bash
-npm start
-````
-
-### 3. Cài đặt frontend (web)
-
-```bash
-cd ../web
-npm install
+FIREBASE_CONFIG=...
 ```
 
-#### **Cấu hình biến môi trường**
-
-Tạo file `.env` trong thư mục `web/` với nội dung:
-
-```
-VITE_API_URL =... localhost: Port của backend
-```
-
-#### **Chạy frontend**
+4. Start the development servers:
 
 ```bash
+# Start backend
+cd server
 npm run dev
-# hoặc
-npm start
+
+# Start frontend
+cd web
+npm run dev
 ```
 
-### 4. Truy cập ứng dụng
+## Screenshots (Ảnh chụp màn hình các Page)
 
-- Frontend: Run ' npm run dev '
-- Backend API: Run 'npm start'
+### Authentication
 
-```
-
-## Một số tính năng nổi bật
-
-- Đăng nhập bằng email code (không dùng password), sử dụng Github
-- Quản lý board, card, task (CRUD)
-- Gán/xóa thành viên vào task (RESTful API)
-- Kéo thả task/card (React DnD)
-- Realtime update (Socket.io)
-- Responsive UI (Material UI)
-
-
-### Screenshots pages
-Ảnh chụp màn hình của các page
 ![Login Page](screenshots/LoginPage.png)
 ![Auth Page](screenshots/AuthPage.png)
+
+### Board Management
+
 ![Board Management Page](screenshots/BoardManagementPage.png)
 ![Create new board](screenshots/CreateNewBoard.png)
 ![Created new board](screenshots/CreatedNewBoard.png)
+
+### Card & Task
+
 ![Card](screenshots/Card.png)
 ![Created new card](screenshots/CreatedNewCard.png)
 ![Create new task](screenshots/CreateNewTask.png)
+![Created new task](screenshots/CreatedNewTask.png)
+![Drop & Drag Task](screenshots/DropAndDragTask.png)
+
+### Member Management
+
 ![Invite member](screenshots/InviteMember.png)
-![Created new task](screenshots/CreateNewTask.png)
-![Drop & Drag Task](screenshots/Drop&DragTask.png)
 ![Send Invite To Email](screenshots/SendInviteToEmail.png)
 ![Join To Board](screenshots/JoinToBoard.png)
+
+### Task Assignment
+
 ![Assign Task](screenshots/AssignTask.png)
 ![Assigned Task](screenshots/AssignedTask.png)
 
+## API Documentation
 
-```
+### Authentication
+
+- `POST /auth/email` - Send OTP to email
+- `POST /auth/verify` - Verify OTP
+- `GET /auth/github` - GitHub OAuth
+- `GET /auth/github/callback` - GitHub OAuth callback
+
+### Boards
+
+- `GET /boards` - Get all boards
+- `POST /boards` - Create board
+- `GET /boards/:id` - Get board details
+- `PUT /boards/:id` - Update board
+- `DELETE /boards/:id` - Delete board
+
+### Cards
+
+- `GET /boards/:boardId/cards` - Get all cards
+- `POST /boards/:boardId/cards` - Create card
+- `PUT /boards/:boardId/cards/:id` - Update card
+- `DELETE /boards/:boardId/cards/:id` - Delete card
+
+### Tasks
+
+- `GET /boards/:boardId/cards/:cardId/tasks` - Get all tasks
+- `POST /boards/:boardId/cards/:cardId/tasks` - Create task
+- `PUT /boards/:boardId/cards/:cardId/tasks/:id` - Update task
+- `DELETE /boards/:boardId/cards/:cardId/tasks/:id` - Delete task
+
+### Members
+
+- `GET /boards/:boardId/members` - Get board members
+- `POST /boards/:boardId/members` - Invite member
+- `DELETE /boards/:boardId/members/:id` - Remove member
+
+### Task Assignment
+
+- `POST /boards/:boardId/cards/:cardId/tasks/:taskId/assign` - Assign member
+- `DELETE /boards/:boardId/cards/:cardId/tasks/:taskId/assign/:memberId` - Remove member
